@@ -64,7 +64,7 @@ public class SimpleTcpClient
                     int secondsToSleep = 2 + (int) (Math.random() * 5);
                     log("Sleeping " + secondsToSleep + " seconds to allow simulate long client-server connection...");
                     Thread.sleep(secondsToSleep * 1000);
-                    request = "100+4";
+                    request = " bla+4";
                     if (sendRequestToServer(request))
                     {
                         log("Sent " + request + " to server");

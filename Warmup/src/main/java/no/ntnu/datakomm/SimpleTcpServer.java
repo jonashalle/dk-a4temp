@@ -52,11 +52,14 @@ public class SimpleTcpServer
                         clientSocket.close();
                     } else
                     {
+
+
                         try
                         {
                             PrintWriter writer = new PrintWriter(clientSocket.getOutputStream(), true);
                             writer.println(engine.eval(clientInput));
                             System.out.println("server response " + engine.eval(clientInput));
+
 
                         } catch (ScriptException e)
                         {
@@ -93,7 +96,7 @@ public class SimpleTcpServer
         System.out.println(message);
     }
 
-    private String calculateString(String stringToCalculate)
+  /*  private String calculateString(String stringToCalculate)
     {
         String returnStatement = null;
         ScriptEngineManager mgr = new ScriptEngineManager();
@@ -110,5 +113,7 @@ public class SimpleTcpServer
             returnStatement = "ERROR";
         }
         return returnStatement;
-    }
+    }*/
+
+
 }
