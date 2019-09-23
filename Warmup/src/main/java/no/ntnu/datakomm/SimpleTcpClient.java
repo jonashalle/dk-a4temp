@@ -1,24 +1,37 @@
-package no.ntnu.datakomm;
+package main.java.no.ntnu.datakomm;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
 
 /**
  * A Simple TCP client, used as a warm-up exercise for assignment A4.
  */
-public class SimpleTcpClient {
+public class SimpleTcpClient
+{
     // Remote host where the server will be running
-    private static final String HOST = "localhost";
+    private static final String HOST = "127.0.0.1";
     // TCP port
-    private static final int PORT = 1301;
+    private static final int PORT = 1234;
+    private Socket socket;
+    private PrintWriter toServer;
+    private BufferedReader fromServer;
 
     /**
      * Run the TCP Client.
      *
      * @param args Command line arguments. Not used.
      */
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
         SimpleTcpClient client = new SimpleTcpClient();
-        try {
+        try
+        {
             client.run();
-        } catch (InterruptedException e) {
+        } catch (InterruptedException e)
+        {
             log("Client interrupted");
             Thread.currentThread().interrupt();
         }
@@ -31,52 +44,67 @@ public class SimpleTcpClient {
      * @throws InterruptedException The method sleeps to simulate long client-server conversation.
      *                              This exception is thrown if the execution is interrupted halfway.
      */
-    public void run() throws InterruptedException {
+    public void run() throws InterruptedException
+    {
         log("Simple TCP client started");
 
-        if (connectToServer(HOST, PORT)) {
+        if (connectToServer(HOST, PORT))
+        {
             log("Connection to the server established");
             int a = (int) (1 + Math.random() * 10);
             int b = (int) (1 + Math.random() * 10);
             String request = a + "+" + b;
-            if (sendRequestToServer(request)) {
+            if (sendRequestToServer(request))
+            {
                 log("Sent " + request + " to server");
                 String response = readResponseFromServer();
-                if (response != null) {
+                if (response != null)
+                {
                     log("Server responded with: " + response);
-                    int secondsToSleep = 2 + (int)(Math.random() * 5);
+                    int secondsToSleep = 2 + (int) (Math.random() * 5);
                     log("Sleeping " + secondsToSleep + " seconds to allow simulate long client-server connection...");
                     Thread.sleep(secondsToSleep * 1000);
-                    request = "bla+bla";
-                    if (sendRequestToServer(request)) {
+                    request = "100+4";
+                    if (sendRequestToServer(request))
+                    {
                         log("Sent " + request + " to server");
                         response = readResponseFromServer();
-                        if (response != null) {
+                        if (response != null)
+                        {
                             log("Server responded with: " + response);
-                            if (sendRequestToServer("game over") && closeConnection()) {
+                            if (sendRequestToServer("game over") && closeConnection())
+                            {
                                 log("Game over, connection closed");
                                 // When the connection is closed, try to send one more message. It should fail.
-                                if (!sendRequestToServer("2+2")) {
+                                if (!sendRequestToServer("2+2"))
+                                {
                                     log("Sending another message after closing the connection failed as expected");
-                                } else {
+                                } else
+                                {
                                     log("ERROR: sending a message after closing the connection did not fail!");
                                 }
-                            } else {
+                            } else
+                            {
                                 log("ERROR: Failed to stop conversation");
                             }
-                        } else {
+                        } else
+                        {
                             log("ERROR: Failed to receive server's response!");
                         }
-                    } else {
+                    } else
+                    {
                         log("ERROR: Failed to send invalid message to server!");
                     }
-                } else {
+                } else
+                {
                     log("ERROR: Failed to receive server's response!");
                 }
-            } else {
+            } else
+            {
                 log("ERROR: Failed to send valid message to server!");
             }
-        } else {
+        } else
+        {
             log("ERROR: Failed to connect to the server");
         }
 
@@ -88,8 +116,18 @@ public class SimpleTcpClient {
      *
      * @return True on success, false otherwise
      */
-    private boolean closeConnection() {
-        return false;
+    private boolean closeConnection()
+    {
+        boolean returnState = false;
+        try
+        {
+            socket.close();
+            returnState = true;
+        } catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        return returnState;
     }
 
     /**
@@ -99,10 +137,23 @@ public class SimpleTcpClient {
      * @param port TCP port to use
      * @return True when connection established, false otherwise
      */
-    private boolean connectToServer(String host, int port) {
-        // TODO - implement this method
-        // Remember to catch all possible exceptions that the Socket class can throw.
-        return false;
+    private boolean connectToServer(String host, int port)
+    {
+        boolean connected = false;
+        try
+        {
+            socket = new Socket(host, port);
+            toServer = new PrintWriter(socket.getOutputStream(), true);
+            fromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            connected = true;
+            System.out.println("Successfully connected");
+        } catch (Exception e)
+        {
+            System.out.println("Socket error" + e.getMessage());
+        }
+
+
+        return connected;
     }
 
     /**
@@ -111,14 +162,22 @@ public class SimpleTcpClient {
      * @param request The request message to send. Do NOT include the newline in the message!
      * @return True when message successfully sent, false on error.
      */
-    private boolean sendRequestToServer(String request) {
+    private boolean sendRequestToServer(String request)
+    {
+        boolean messageSent = false;
+      if (socket.isConnected() && !socket.isClosed() )
+      {
+          messageSent = true;
+      }
+
+        toServer.println(request);
         // TODO - implement this method
         // Hint: What can go wrong? Several things:
         // * Connection closed by remote host (server shutdown)
         // * Internet connection lost, timeout in transmission
         // * Connection not opened.
         // * What is the request is null or empty?
-        return false;
+        return messageSent;
     }
 
     /**
@@ -127,10 +186,19 @@ public class SimpleTcpClient {
      * @return The response received from the server, null on error. The newline character is stripped away
      * (not included in the returned value).
      */
-    private String readResponseFromServer() {
+    private String readResponseFromServer()
+    {
+        String returnString = null;
+        try
+        {
+            returnString = fromServer.readLine();
+        } catch (Exception e)
+        {
+            System.out.println("Error" + e.getMessage());
+        }
         // TODO - implement this method
         // Similarly to other methods, exception can happen while trying to read the input stream of the TCP Socket
-        return null;
+        return returnString;
     }
 
     /**
@@ -138,7 +206,8 @@ public class SimpleTcpClient {
      *
      * @param message The message to be logged (printed).
      */
-    private static void log(String message) {
+    private static void log(String message)
+    {
         String threadId = "THREAD #" + Thread.currentThread().getId() + ": ";
         System.out.println(threadId + message);
     }
