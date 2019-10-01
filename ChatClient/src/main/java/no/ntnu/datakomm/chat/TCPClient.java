@@ -2,10 +2,12 @@ package no.ntnu.datakomm.chat;
 
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-public class TCPClient {
+public class TCPClient
+{
     private PrintWriter toServer;
     private BufferedReader fromServer;
     private Socket connection;
@@ -22,19 +24,21 @@ public class TCPClient {
      * @param port TCP port of the chat server
      * @return True on success, false otherwise
      */
-    public boolean connect(String host, int port) {
+    public boolean connect(String host, int port)
+    {
         boolean connected = false;
         try
         {
 
             connection = new Socket(host, port);
-            toServer = new PrintWriter(connection.getOutputStream(),true );
+            toServer = new PrintWriter(connection.getOutputStream(), true);
             fromServer = new BufferedReader(new InputStreamReader(connection.getInputStream()));
             connected = true;
             System.out.println("Socket successfully connected");
         } catch (IOException e)
         {
-            System.out.println("Socket error " +e.getMessage());
+            connection = null;
+            System.out.println("Socket error " + e.getMessage());
         }
         // TODO Step 1: implement this method
         // Hint: Remember to process all exceptions and return false on error
@@ -51,15 +55,28 @@ public class TCPClient {
      * in the process of being closed. with "synchronized" keyword we make sure
      * that no two threads call this method in parallel.
      */
-    public synchronized void disconnect() {
-        // TODO Step 4: implement this method
+    public synchronized void disconnect()
+    {
+        if (isConnectionActive())
+        {
+            try
+            {
+                connection.close();
+                onDisconnect();
+            } catch (IOException e)
+            {
+                e.printStackTrace();
+            }
+        }
+        //  Step 4: implement this method
         // Hint: remember to check if connection is active
     }
 
     /**
      * @return true if the connection is active (opened), false if not.
      */
-    public boolean isConnectionActive() {
+    public boolean isConnectionActive()
+    {
         return connection != null;
     }
 
@@ -69,10 +86,24 @@ public class TCPClient {
      * @param cmd A command. It should include the command word and optional attributes, according to the protocol.
      * @return true on success, false otherwise
      */
-    private boolean sendCommand(String cmd) {
+    private boolean sendCommand(String cmd)
+    {
+
+        boolean returnStatement = false;
+        if (isConnectionActive())
+        {
+
+
+            toServer.println(cmd);
+            returnStatement = true;
+
+
+        }
+
+        return returnStatement;
+
         // TODO Step 2: Implement this method
         // Hint: Remember to check if connection is active
-        return false;
     }
 
     /**
@@ -81,11 +112,15 @@ public class TCPClient {
      * @param message Message to send
      * @return true if message sent, false on error
      */
-    public boolean sendPublicMessage(String message) {
+    public boolean sendPublicMessage(String message)
+    {
+        boolean returnStatement = sendCommand("msg " + message);
+
         // TODO Step 2: implement this method
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
-        return false;
+        return returnStatement;
+
     }
 
     /**
@@ -93,7 +128,9 @@ public class TCPClient {
      *
      * @param username Username to use
      */
-    public void tryLogin(String username) {
+    public void tryLogin(String username)
+    {
+        sendCommand("login " + username);
         // TODO Step 3: implement this method
         // Hint: Reuse sendCommand() method
     }
@@ -102,8 +139,10 @@ public class TCPClient {
      * Send a request for latest user list to the server. To get the new users,
      * clear your current user list and use events in the listener.
      */
-    public void refreshUserList() {
-        // TODO Step 5: implement this method
+    public void refreshUserList()
+    {
+        sendCommand("users");
+        //  Step 5: implement this method
         // Hint: Use Wireshark and the provided chat client reference app to find out what commands the
         // client and server exchange for user listing.
     }
@@ -115,7 +154,9 @@ public class TCPClient {
      * @param message   Message to send
      * @return true if message sent, false on error
      */
-    public boolean sendPrivateMessage(String recipient, String message) {
+    public boolean sendPrivateMessage(String recipient, String message)
+    {
+
         // TODO Step 6: Implement this method
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
@@ -126,7 +167,8 @@ public class TCPClient {
     /**
      * Send a request for the list of commands that server supports.
      */
-    public void askSupportedCommands() {
+    public void askSupportedCommands()
+    {
         // TODO Step 8: Implement this method
         // Hint: Reuse sendCommand() method
     }
@@ -137,12 +179,26 @@ public class TCPClient {
      *
      * @return one line of text (one command) received from the server
      */
-    private String waitServerResponse() {
+    private String waitServerResponse()
+    {
+        String serverResponse = null;
+        try
+        {
+            serverResponse = fromServer.readLine();
+        } catch (IOException e)
+        {
+            System.out.println("waitServerResponse error" + e);
+            disconnect();
+        }
+        if (serverResponse == null)
+        {
+            disconnect();
+        }
         // TODO Step 3: Implement this method
         // TODO Step 4: If you get I/O Exception or null from the stream, it means that something has gone wrong
         // with the stream and hence the socket. Probably a good idea to close the socket in that case.
 
-        return null;
+        return serverResponse;
     }
 
     /**
@@ -150,10 +206,13 @@ public class TCPClient {
      *
      * @return Error message or "" if there has been no error
      */
-    public String getLastError() {
-        if (lastError != null) {
+    public String getLastError()
+    {
+        if (lastError != null)
+        {
             return lastError;
-        } else {
+        } else
+        {
             return "";
         }
     }
@@ -161,9 +220,11 @@ public class TCPClient {
     /**
      * Start listening for incoming commands from the server in a new CPU thread.
      */
-    public void startListenThread() {
+    public void startListenThread()
+    {
         // Call parseIncomingCommands() in the new thread.
-        Thread t = new Thread(() -> {
+        Thread t = new Thread(() ->
+        {
             parseIncomingCommands();
         });
         t.start();
@@ -173,16 +234,33 @@ public class TCPClient {
      * Read incoming messages one by one, generate events for the listeners. A loop that runs until
      * the connection is closed.
      */
-    private void parseIncomingCommands() {
-        while (isConnectionActive()) {
-            // TODO Step 3: Implement this method
+    private void parseIncomingCommands()
+    {
+        while (isConnectionActive())
+        {
+
+            String[] serverResponse = waitServerResponse().toLowerCase().split(" ", 2);
+            String commandWord = serverResponse[0];
+            switch (commandWord)
+            {
+                case "loginok":
+                    onLoginResult(true, null);
+                    break;
+                case "loginerr":
+                    onLoginResult(false, serverResponse[1]);
+                    break;
+                case "users":
+                    onUsersList(serverResponse[1].split(" "));
+                    break;
+            }
+            // TStep 3: Implement this method
             // Hint: Reuse waitServerResponse() method
             // Hint: Have a switch-case (or other way) to check what type of response is received from the server
             // and act on it.
             // Hint: In Step 3 you need to handle only login-related responses.
             // Hint: In Step 3 reuse onLoginResult() method
 
-            // TODO Step 5: update this method, handle user-list response from the server
+            // T Step 5: update this method, handle user-list response from the server
             // Hint: In Step 5 reuse onUserList() method
 
             // TODO Step 7: add support for incoming chat messages from other users (types: msg, privmsg)
@@ -200,8 +278,10 @@ public class TCPClient {
      *
      * @param listener
      */
-    public void addListener(ChatListener listener) {
-        if (!listeners.contains(listener)) {
+    public void addListener(ChatListener listener)
+    {
+        if (!listeners.contains(listener))
+        {
             listeners.add(listener);
         }
     }
@@ -211,7 +291,8 @@ public class TCPClient {
      *
      * @param listener
      */
-    public void removeListener(ChatListener listener) {
+    public void removeListener(ChatListener listener)
+    {
         listeners.remove(listener);
     }
 
@@ -228,8 +309,10 @@ public class TCPClient {
      * @param success When true, login successful. When false, it failed
      * @param errMsg  Error message if any
      */
-    private void onLoginResult(boolean success, String errMsg) {
-        for (ChatListener l : listeners) {
+    private void onLoginResult(boolean success, String errMsg)
+    {
+        for (ChatListener l : listeners)
+        {
             l.onLoginResult(success, errMsg);
         }
     }
@@ -238,8 +321,13 @@ public class TCPClient {
      * Notify listeners that socket was closed by the remote end (server or
      * Internet error)
      */
-    private void onDisconnect() {
-        // TODO Step 4: Implement this method
+    private void onDisconnect()
+    {
+        for (ChatListener l : listeners)
+        {
+            l.onDisconnect();
+        }
+        // Step 4: Implement this method
         // Hint: all the onXXX() methods will be similar to onLoginResult()
     }
 
@@ -248,8 +336,13 @@ public class TCPClient {
      *
      * @param users List with usernames
      */
-    private void onUsersList(String[] users) {
-        // TODO Step 5: Implement this method
+    private void onUsersList(String[] users)
+    {
+        for (ChatListener l : listeners)
+        {
+            l.onUserList(users);
+        }
+        // Step 5: Implement this method
     }
 
     /**
@@ -259,7 +352,8 @@ public class TCPClient {
      * @param sender Username of the sender
      * @param text   Message text
      */
-    private void onMsgReceived(boolean priv, String sender, String text) {
+    private void onMsgReceived(boolean priv, String sender, String text)
+    {
         // TODO Step 7: Implement this method
     }
 
@@ -268,7 +362,8 @@ public class TCPClient {
      *
      * @param errMsg Error description returned by the server
      */
-    private void onMsgError(String errMsg) {
+    private void onMsgError(String errMsg)
+    {
         // TODO Step 7: Implement this method
     }
 
@@ -277,7 +372,8 @@ public class TCPClient {
      *
      * @param errMsg Error message
      */
-    private void onCmdError(String errMsg) {
+    private void onCmdError(String errMsg)
+    {
         // TODO Step 7: Implement this method
     }
 
@@ -287,7 +383,8 @@ public class TCPClient {
      *
      * @param commands Commands supported by the server
      */
-    private void onSupported(String[] commands) {
+    private void onSupported(String[] commands)
+    {
         // TODO Step 8: Implement this method
     }
 }
